@@ -1,13 +1,12 @@
 
 using Coman_Ionut_Alexandru_Lab2.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 
 namespace Coman_Ionut_Alexandru_Lab2.Pages.BookPages;
 
-public class EditModel : PageModel
+public class EditModel : BookCategoriesPageModel
 {
     private readonly Coman_Ionut_Alexandru_Lab2Context _context;
 
@@ -26,76 +25,107 @@ public class EditModel : PageModel
             return NotFound();
         }
 
-        var book = await _context.Book.FirstOrDefaultAsync(m => m.Id == id);
+        Book = await _context.Book
+            .Include(b => b.Publisher)
+            .Include(b => b.Author)
+            .Include(b => b.BookCategories)
+                .ThenInclude(bc => bc.Category)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(m => m.Id == id);
 
-        if (book is null)
+        if (Book is null)
         {
             return NotFound();
         }
 
-        Book = book;
+        PopulateAssignedCategoryData(_context, Book);
 
-        ViewData["PublisherID"] = new SelectList(
-            _context.Set<Publisher>(),
-            "ID",
-            "PublisherName",
-            Book.PublisherID
-        );
-
-        ViewData["AuthorID"] = new SelectList(
-            _context.Authors,
-            "ID",
-            "LastName",
-            Book.AuthorID
-        );
+        PopulateDropDownLists(Book);
 
         return Page();
     }
 
-    public async Task<IActionResult> OnPostAsync()
+    public async Task<IActionResult> OnPostAsync(
+        int? id,
+        string[] selectedCategories)
     {
-        if (!ModelState.IsValid)
+        if (id is null)
         {
-            ViewData["PublisherID"] = new SelectList(
-                _context.Set<Publisher>(),
-                "ID",
-                "PublisherName",
-                Book.PublisherID
-            );
-
-            ViewData["AuthorID"] = new SelectList(
-                _context.Authors,
-                "ID",
-                "LastName",
-                Book.AuthorID
-            );
-
-            return Page();
+            return NotFound();
         }
 
-        _context.Attach(Book).State = EntityState.Modified;
+        var bookToUpdate = await _context.Book
+            .Include(b => b.Publisher)
+            .Include(b => b.Author)
+            .Include(b => b.BookCategories)
+                .ThenInclude(bc => bc.Category)
+            .FirstOrDefaultAsync(m => m.Id == id);
 
-        try
+        if (bookToUpdate is null)
         {
+            return NotFound();
+        }
+
+        if (await TryUpdateModelAsync<Book>(
+            bookToUpdate,
+            "Book",
+            b => b.Title,
+            b => b.AuthorID,
+            b => b.Price,
+            b => b.PublishingDate,
+            b => b.PublisherID))
+        {
+            UpdateBookCategories(
+                _context,
+                selectedCategories,
+                bookToUpdate
+            );
+
             await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!BookExists(Book.Id))
-            {
-                return NotFound();
-            }
-            else
-            {
-                throw;
-            }
+
+            return RedirectToPage("./Index");
         }
 
-        return RedirectToPage("./Index");
+        UpdateBookCategories(
+            _context,
+            selectedCategories,
+            bookToUpdate
+        );
+
+        PopulateAssignedCategoryData(
+            _context,
+            bookToUpdate
+        );
+
+        Book = bookToUpdate;
+
+        PopulateDropDownLists(Book);
+
+        return Page();
     }
 
-    private bool BookExists(int id)
+    private void PopulateDropDownLists(Book book)
     {
-        return _context.Book.Any(e => e.Id == id);
+        ViewData["PublisherID"] = new SelectList(
+            _context.Set<Publisher>(),
+            "ID",
+            "PublisherName",
+            book.PublisherID
+        );
+
+        var authorList = _context.Authors
+            .Select(a => new
+            {
+                a.ID,
+                FullName = a.LastName + " " + a.FirstName
+            })
+            .ToList();
+
+        ViewData["AuthorID"] = new SelectList(
+            authorList,
+            "ID",
+            "FullName",
+            book.AuthorID
+        );
     }
 }

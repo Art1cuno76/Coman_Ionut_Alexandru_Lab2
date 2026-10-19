@@ -1,13 +1,10 @@
-
 using Coman_Ionut_Alexandru_Lab2.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
 
 namespace Coman_Ionut_Alexandru_Lab2.Pages.BookPages;
 
-public class CreateModel : PageModel
+public class CreateModel : BookCategoriesPageModel
 {
     private readonly Coman_Ionut_Alexandru_Lab2Context _context;
 
@@ -16,44 +13,39 @@ public class CreateModel : PageModel
         _context = context;
     }
 
+    [BindProperty]
+    public Book Book { get; set; } = new Book
+    {
+        BookCategories = new List<BookCategory>()
+    };
+
     public IActionResult OnGet()
     {
-        ViewData["PublisherID"] = new SelectList(
-            _context.Set<Publisher>(),
-            "ID",
-            "PublisherName"
-        );
-
-        ViewData["AuthorID"] = new SelectList(
-            _context.Authors,
-            "ID",
-            "LastName"
-        );
+        PopulateDropDownLists();
+        PopulateAssignedCategoryData(_context, Book);
 
         return Page();
     }
 
-    [BindProperty]
-    public Book Book { get; set; } = default!;
-
-    // To protect from overposting attacks, see https://aka.ms/RazorPagesCRUD.
-    public async Task<IActionResult> OnPostAsync()
+    public async Task<IActionResult> OnPostAsync(string[] selectedCategories)
     {
+        Book.BookCategories = new List<BookCategory>();
+
+        if (selectedCategories != null)
+        {
+            foreach (var categoryID in selectedCategories)
+            {
+                Book.BookCategories.Add(new BookCategory
+                {
+                    CategoryID = int.Parse(categoryID)
+                });
+            }
+        }
+
         if (!ModelState.IsValid)
         {
-            ViewData["PublisherID"] = new SelectList(
-                _context.Set<Publisher>(),
-                "ID",
-                "PublisherName",
-                Book.PublisherID
-            );
-
-            ViewData["AuthorID"] = new SelectList(
-                _context.Authors,
-                "ID",
-                "LastName",
-                Book.AuthorID
-            );
+            PopulateDropDownLists();
+            PopulateAssignedCategoryData(_context, Book);
 
             return Page();
         }
@@ -62,5 +54,30 @@ public class CreateModel : PageModel
         await _context.SaveChangesAsync();
 
         return RedirectToPage("./Index");
+    }
+
+    private void PopulateDropDownLists()
+    {
+        var authorList = _context.Authors
+            .Select(a => new
+            {
+                a.ID,
+                FullName = a.LastName + " " + a.FirstName
+            })
+            .ToList();
+
+        ViewData["AuthorID"] = new SelectList(
+            authorList,
+            "ID",
+            "FullName",
+            Book.AuthorID
+        );
+
+        ViewData["PublisherID"] = new SelectList(
+            _context.Publisher,
+            "ID",
+            "PublisherName",
+            Book.PublisherID
+        );
     }
 }

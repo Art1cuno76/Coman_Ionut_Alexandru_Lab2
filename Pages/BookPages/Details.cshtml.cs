@@ -1,4 +1,3 @@
-
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -27,16 +26,17 @@ public class DetailsModel : PageModel
         var book = await _context.Book
             .Include(b => b.Author)
             .Include(b => b.Publisher)
-            .FirstOrDefaultAsync(m => m.Id == id);
+            .Include(b => b.BookCategories)
+                .ThenInclude(bc => bc.Category)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(b => b.Id == id);
 
         if (book is null)
         {
             return NotFound();
         }
-        else
-        {
-            Book = book;
-        }
+
+        Book = book;
 
         return Page();
     }

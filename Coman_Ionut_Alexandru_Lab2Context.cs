@@ -11,4 +11,5 @@ public class Coman_Ionut_Alexandru_Lab2Context(
     public DbSet<Publisher> Publisher { get; set; } = default!;
 
     public DbSet<Author> Authors { get; set; } = default!;
+    public DbSet<Category> Category { get; set; } = default!;
 }
