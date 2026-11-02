@@ -1,4 +1,3 @@
-
 using Coman_Ionut_Alexandru_Lab2.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,5 +10,10 @@ public class Coman_Ionut_Alexandru_Lab2Context(
     public DbSet<Publisher> Publisher { get; set; } = default!;
 
     public DbSet<Author> Authors { get; set; } = default!;
+
     public DbSet<Category> Category { get; set; } = default!;
+
+    public DbSet<Member> Member { get; set; } = default!;
+
+    public DbSet<Borrowing> Borrowing { get; set; } = default!;
 }
